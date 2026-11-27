@@ -18,7 +18,7 @@ const PLATFORM_STEPS: Record<
       {
         title: '01. Push from AI Studio to GitHub',
         detail:
-          'Use Save to GitHub in AI Studio (or unzip the downloaded bundle into a private GitHub repository). Confirm bot.py, browser_manager.py, selectors.py, Dockerfile, and requirements.txt sit at the repository root.',
+          'Use Save to GitHub in AI Studio (or unzip the downloaded bundle into a private GitHub repository). Confirm bot.py, browser_manager.py, dom_selectors.py, Dockerfile, and requirements.txt sit at the repository root.',
       },
       {
         title: '02. Create Railway Service from GitHub',

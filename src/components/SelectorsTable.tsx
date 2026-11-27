@@ -39,7 +39,7 @@ export const SelectorsTable: React.FC = () => {
             Centralized Selector Matrix
           </h1>
           <p className="mt-1.5 text-sm text-slate-600 max-w-2xl">
-            Every Playwright locator in <span className="font-mono text-slate-800">selectors.py</span> resolves an
+            Every Playwright locator in <span className="font-mono text-slate-800">dom_selectors.py</span> resolves an
             ordered primary-to-fallback chain so minor Parivahan DOM changes do not break automation.
           </p>
         </div>

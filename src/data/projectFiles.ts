@@ -1,6 +1,6 @@
 import botPy from '../../bot.py?raw';
 import browserManagerPy from '../../browser_manager.py?raw';
-import selectorsPy from '../../selectors.py?raw';
+import domSelectorsPy from '../../dom_selectors.py?raw';
 import dockerfileRaw from '../../Dockerfile?raw';
 import requirementsTxt from '../../requirements.txt?raw';
 import envExampleRaw from '../../.env.example?raw';
@@ -55,12 +55,12 @@ export const DELIVERABLE_FILES: DeliverableFile[] = [
     browserManagerPy
   ),
   makeFile(
-    'selectors',
-    'selectors.py',
+    'dom_selectors',
+    'dom_selectors.py',
     'python',
     'Python 3.11+',
     'Centralized primary and fallback selectors for accused-challan and challan-print',
-    selectorsPy
+    domSelectorsPy
   ),
   makeFile(
     'dockerfile',

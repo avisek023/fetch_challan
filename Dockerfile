@@ -15,7 +15,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy bot source modules
-COPY selectors.py /app/selectors.py
+COPY dom_selectors.py /app/dom_selectors.py
 COPY browser_manager.py /app/browser_manager.py
 COPY bot.py /app/bot.py
 

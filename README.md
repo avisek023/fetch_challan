@@ -8,7 +8,7 @@ Cloud-deployable Telegram automation bot built with **Python 3.11+**, **`python-
 | :--- | :--- |
 | `bot.py` | Async Telegram `ConversationHandler` (`WAITING_FOR_VEHICLE` -> `WAITING_FOR_CAPTCHA_LIST` -> `WAITING_FOR_CAPTCHA_PRINT`), inline buttons, 180s inactivity timeout cleanup, and `aiohttp` port `8080` health server. |
 | `browser_manager.py` | Async Playwright Chromium controller with stealth masking (`navigator.webdriver`), `1366x768` viewport, Windows Chrome UA, optional `PROXY_URL`, dynamic HTML table parser, and multi-strategy PDF capture (`/tmp/<CHALLAN_NO>.pdf`). |
-| `selectors.py` | Centralized primary and fallback CSS/text selectors for `/index/accused-challan` and `/index/challan-print`. |
+| `dom_selectors.py` | Centralized primary and fallback CSS/text selectors for `/index/accused-challan` and `/index/challan-print`. |
 | `Dockerfile` | Container definition based on `mcr.microsoft.com/playwright/python:v1.58.0-noble` with pre-installed Chromium and Linux dependencies. |
 | `requirements.txt` | Python dependencies (`python-telegram-bot>=22.8`, `playwright==1.58.0`, `aiohttp`, `python-dotenv`). |
 | `.env.example` | Environment variable template. |
@@ -30,7 +30,7 @@ Cloud-deployable Telegram automation bot built with **Python 3.11+**, **`python-
 ### Step 1: Sync This Project from AI Studio to GitHub
 
 1. In Google AI Studio, click **Save to GitHub** (or export the project archive and initialize a local Git repo).
-2. Create a new **Private** GitHub repository (e.g. `parivahan-echallan-bot`) and push the files (`bot.py`, `browser_manager.py`, `selectors.py`, `Dockerfile`, `requirements.txt`, `.env.example`, `README.md`).
+2. Create a new **Private** GitHub repository (e.g. `parivahan-echallan-bot`) and push the files (`bot.py`, `browser_manager.py`, `dom_selectors.py`, `Dockerfile`, `requirements.txt`, `.env.example`, `README.md`).
 3. Verify `.env` is listed in `.gitignore` and never committed to GitHub.
 
 ### Step 2: Deploy Automatically to Railway via Docker

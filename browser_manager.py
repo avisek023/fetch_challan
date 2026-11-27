@@ -29,7 +29,7 @@ from playwright.async_api import (
     async_playwright,
 )
 
-from selectors import (
+from dom_selectors import (
     ACCUSED_CHALLAN_URL,
     ACCUSED_SELECTORS,
     CHALLAN_PRINT_URL,

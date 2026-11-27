@@ -1,0 +1,15 @@
+# Exclude frontend scaffolding, local secrets, and caches from the Python Docker build context
+node_modules/
+dist/
+src/
+.git/
+__pycache__/
+*.pyc
+.env
+index.html
+metadata.json
+package.json
+package-lock.json
+bun.lock
+tsconfig.json
+vite.config.ts
