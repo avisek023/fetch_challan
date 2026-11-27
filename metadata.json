@@ -1,0 +1,8 @@
+{
+  "name": "Parivahan eChallan Bot Studio",
+  "description": "Cloud-deployable Python 3.11+ Telegram bot and Playwright Chromium automation project for Parivahan eChallan lookup and sequential PDF receipt downloads.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
