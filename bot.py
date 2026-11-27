@@ -213,9 +213,9 @@ async def _begin_vehicle_lookup(
         logger.exception("Stage 1 lookup failed for %s", vehicle_no)
         await cleanup_user_session(context, user_id)
         await status_msg.edit_text(
-            f"❌ Failed to load Parivahan portal for `{vehicle_no}`.\n"
-            f"Reason: `{exc}`\n\nSend /start to try again.",
-            parse_mode="Markdown",
+            f"❌ Failed to load Parivahan portal for {vehicle_no}.\n\n"
+            f"Reason:\n{exc}\n\n"
+            "Send /start to try again."
         )
         return ConversationHandler.END
 

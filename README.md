@@ -87,3 +87,14 @@ curl http://localhost:8080/health
 4. Receive a full-page screenshot of the pending challans table.
 5. For each pending challan `Challan [1/N]: <CHALLAN_NO>`, reply with the print-page CAPTCHA to receive `<CHALLAN_NO>.pdf` directly in your chat.
 6. Temporary files in `/tmp` are deleted immediately after upload, and Chromium is closed automatically upon completion, `/cancel`, or after 180 seconds of inactivity.
+
+---
+
+## Troubleshooting `net::ERR_CONNECTION_RESET`
+
+`echallan.parivahan.gov.in` is hosted on NIC India infrastructure and frequently drops TCP connections (`net::ERR_CONNECTION_RESET`) from non-Indian or cloud datacenter IP ranges (including Railway US/EU/Singapore regions).
+
+- `browser_manager.py` automatically disables HTTP/2 & QUIC (`--disable-http2`, `--disable-quic`), launches full Chromium (`--headless=new`), and retries transient resets with root-origin cookie warm-up.
+- If resets persist from your cloud region, configure an **Indian residential/ISP HTTP or SOCKS5 proxy** in your Railway/Render/Koyeb Variables:
+  - `PROXY_URL=http://username:password@indian-proxy-host:port`
+

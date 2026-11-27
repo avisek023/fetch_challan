@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 from playwright.async_api import (
     Browser,
@@ -97,6 +97,10 @@ class PrintDownloadResult:
     message: str = ""
 
 
+class PortalConnectionError(RuntimeError):
+    """Raised when Parivahan drops or resets TCP connections after retries."""
+
+
 def parse_proxy_url(proxy_url: str | None) -> dict[str, str] | None:
     """Parse an optional PROXY_URL into Playwright's proxy configuration dict."""
     if not proxy_url or not proxy_url.strip():
@@ -108,9 +112,9 @@ def parse_proxy_url(proxy_url: str | None) -> dict[str, str] | None:
     port_suffix = f":{parsed.port}" if parsed.port else ""
     config: dict[str, str] = {"server": f"{parsed.scheme}://{parsed.hostname}{port_suffix}"}
     if parsed.username:
-        config["username"] = parsed.username
+        config["username"] = unquote(parsed.username)
     if parsed.password:
-        config["password"] = parsed.password
+        config["password"] = unquote(parsed.password)
     return config
 
 
@@ -154,6 +158,8 @@ class ParivahanBrowserSession:
                 "--disable-setuid-sandbox",
                 "--disable-dev-shm-usage",
                 "--disable-blink-features=AutomationControlled",
+                "--disable-http2",
+                "--disable-quic",
                 "--disable-gpu",
                 "--window-size=1366,768",
             ]
@@ -167,7 +173,18 @@ class ParivahanBrowserSession:
                 launch_kwargs["proxy"] = proxy_config
                 logger.info("Launching Chromium via proxy server: %s", proxy_config["server"])
 
-            self._browser = await self._playwright.chromium.launch(**launch_kwargs)
+            # Prefer full Chromium (--headless=new) over legacy headless_shell to reduce WAF resets
+            if self.headless:
+                try:
+                    self._browser = await self._playwright.chromium.launch(
+                        channel="chromium",
+                        **launch_kwargs,
+                    )
+                except PlaywrightError:
+                    self._browser = await self._playwright.chromium.launch(**launch_kwargs)
+            else:
+                self._browser = await self._playwright.chromium.launch(**launch_kwargs)
+
             self.context = await self._browser.new_context(
                 viewport=VIEWPORT_CONFIG,
                 user_agent=WINDOWS_CHROME_UA,
@@ -176,8 +193,12 @@ class ParivahanBrowserSession:
                 accept_downloads=True,
                 ignore_https_errors=True,
                 extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-IN,en-US;q=0.9,en;q=0.8",
                     "Upgrade-Insecure-Requests": "1",
+                    "sec-ch-ua": '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"',
                 },
             )
             await self.context.add_init_script(STEALTH_INIT_SCRIPT)
@@ -312,6 +333,70 @@ class ParivahanBrowserSession:
                 continue
         return " | ".join(fragments)
 
+    async def _goto_with_retry(self, url: str, attempts: int = 3) -> None:
+        """Navigate with retries for transient NIC/Parivahan TCP resets and clear geo-block guidance."""
+        page = self._require_page()
+        retryable_markers = (
+            "ERR_CONNECTION_RESET",
+            "ERR_CONNECTION_CLOSED",
+            "ERR_HTTP2_PROTOCOL_ERROR",
+            "ERR_TIMED_OUT",
+            "ERR_EMPTY_RESPONSE",
+            "ERR_SOCKET_NOT_CONNECTED",
+        )
+        last_exc: Exception | None = None
+
+        for attempt in range(1, attempts + 1):
+            try:
+                if attempt == 2:
+                    # Warm up root origin to acquire NIC edge/session cookies before deep URL
+                    try:
+                        await page.goto(
+                            "https://echallan.parivahan.gov.in/",
+                            wait_until="commit",
+                            timeout=15_000,
+                        )
+                    except PlaywrightError:
+                        pass
+
+                await page.goto(url, wait_until="domcontentloaded")
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=12_000)
+                except PlaywrightTimeoutError:
+                    pass
+                return
+            except PlaywrightError as exc:
+                last_exc = exc
+                err_str = str(exc)
+                if not any(marker in err_str for marker in retryable_markers):
+                    raise
+                logger.warning(
+                    "Navigation attempt %d/%d failed for %s: %s",
+                    attempt,
+                    attempts,
+                    url,
+                    err_str.splitlines()[0],
+                )
+                if attempt < attempts:
+                    await asyncio.sleep(1.5 * attempt)
+
+        assert last_exc is not None
+        first_line = str(last_exc).splitlines()[0]
+        if parse_proxy_url(self.proxy_url) is None:
+            raise PortalConnectionError(
+                f"{first_line}\n\n"
+                "Parivahan (NIC India) frequently resets connections from non-Indian cloud datacenter IPs "
+                "(such as Railway US/EU/SG) with ERR_CONNECTION_RESET.\n"
+                "Fix: Set an Indian HTTP/SOCKS5 residential or ISP proxy in your PROXY_URL environment "
+                "variable (e.g. http://user:pass@in-proxy-host:port) and redeploy."
+            ) from last_exc
+
+        raise PortalConnectionError(
+            f"{first_line}\n\n"
+            "Connection was reset even via PROXY_URL. Verify your proxy is reachable, uses an Indian IP "
+            "not blocked by NIC/Parivahan, and that credentials are valid."
+        ) from last_exc
+
     # -------------------------------------------------------------------------
     # Stage 1: Vehicle Lookup Setup
     # -------------------------------------------------------------------------
@@ -321,11 +406,7 @@ class ParivahanBrowserSession:
         page = self._require_page()
 
         logger.info("Navigating to %s for vehicle %s", ACCUSED_CHALLAN_URL, vehicle_number)
-        await page.goto(ACCUSED_CHALLAN_URL, wait_until="domcontentloaded")
-        try:
-            await page.wait_for_load_state("networkidle", timeout=12_000)
-        except PlaywrightTimeoutError:
-            pass
+        await self._goto_with_retry(ACCUSED_CHALLAN_URL)
 
         # Select "Vehicle Number" tab/radio button
         vehicle_tab = await self._try_locate_first(
@@ -560,11 +641,7 @@ class ParivahanBrowserSession:
         page = self._require_page()
 
         logger.info("Navigating to %s for challan %s", CHALLAN_PRINT_URL, challan_no)
-        await page.goto(CHALLAN_PRINT_URL, wait_until="domcontentloaded")
-        try:
-            await page.wait_for_load_state("networkidle", timeout=12_000)
-        except PlaywrightTimeoutError:
-            pass
+        await self._goto_with_retry(CHALLAN_PRINT_URL)
 
         # Click Challan Number radio tab if present
         challan_tab = await self._try_locate_first(
